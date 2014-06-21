@@ -127,6 +127,14 @@ public abstract class AbstractZone implements Zone {
     public Zone getParentZone() {
         return parentZone;
     }
+ 
+    /**
+     *  Default implementation always returns false.
+     */
+    @Override   
+    public boolean setRelativeGridLocation( int x, int y, int z ) {
+        return false;
+    }
 }
 
 

@@ -221,6 +221,19 @@ public class PagedGrid {
                     Vector3f pos = grid.toWorld(x + radius, y, z + radius, temp);
                     zone.getZoneRoot().setLocalTranslation(pos);
                     zone.resetPriority(xNew, 0, zNew, priorityBias);
+                    
+                    // Tell this zone what it's current center-relative location
+                    // is.  Rebuild it if necessary
+                    if( zone.setRelativeGridLocation(x, y, z) ) {
+                        if( parent == null ) {
+                            // Just rebuild it
+                            builder.build(ref);
+                        } else {
+                            // Let the parent decide when it needs
+                            // to be rebuilt
+                            parent.rebuildChild(ref);
+                        }
+                    }
                 }
             }
         }
@@ -266,6 +279,13 @@ public class PagedGrid {
         
         childZone.addParent(parentZone);
         parentZone.addChild(childZone);
+    }
+ 
+    protected void rebuildChild( ZoneProxy childZone ) {
+        // Right now we only support one parent per child
+        // so this is easy
+        ZoneProxy parentZone = childZone.parents.get(0);
+        parentZone.rebuildChild(childZone);        
     }
     
     protected class ZoneProxy implements BuilderReference {
@@ -389,6 +409,14 @@ public class PagedGrid {
             // will short cut and assume it is ok for us to build
             builder.build(this);
         }
+        
+        protected void rebuild() {
+            // We could keep track of additional state here
+            // because "applied" is not the whole story in the
+            // case of a rebuild.  
+            applied = false;
+            builder.build(this);
+        }
  
         protected void addParent( ZoneProxy parent ) {
             if( parents == null ) {
@@ -409,7 +437,16 @@ public class PagedGrid {
                 child.parentApplied(this);
             }
         }
-        
+    
+        protected void rebuildChild( ZoneProxy child ) {
+         
+            // If we are already built then go ahead and let
+            // the child build
+            if( applied ) {
+                child.rebuild();
+            }   
+        }
+                
         protected void removeChild( ZoneProxy child ) {
             if( children == null ) {
                 return;

@@ -62,6 +62,15 @@ public interface Zone extends BuilderReference {
      */
     public void setParentZone( Zone parentZone );
 
+    /**
+     *  Called be the pager to set the current center-cell relative
+     *  location of this zone.  The Zone can use this for LOD determination
+     *  or other cell-relative stuff.  If the zone would need to be
+     *  rebuilt as a result of this change then this method should
+     *  return true.
+     */
+    public boolean setRelativeGridLocation( int x, int y, int z );
+
     public int getXCell();
     public int getYCell();
     public int getZCell();
