@@ -135,6 +135,11 @@ public abstract class AbstractZone implements Zone {
     public boolean setRelativeGridLocation( int x, int y, int z ) {
         return false;
     }
+    
+    @Override
+    public String toString() {
+        return super.toString() + "[" + xCell + ", " + yCell + ", " + zCell + "]";
+    }
 }
 
 

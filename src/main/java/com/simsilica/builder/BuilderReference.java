@@ -34,7 +34,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
  
-package com.simsilica.arboreal.builder;
+package com.simsilica.builder;
 
 
 /**
@@ -61,7 +61,7 @@ public interface BuilderReference {
      *  Called on the thread that calls Builder.applyUpdates()
      *  when applyUpdates() is called.
      */
-    public void apply();
+    public void apply( Builder builder );
     
     /**
      *  Called from the thread that calls Builder.applyUpdates()
@@ -69,7 +69,7 @@ public interface BuilderReference {
      *  no longer being managed by the Builder.  This will only
      *  be called if build() was previously called.   
      */
-    public void release();
+    public void release( Builder builder );
 }
 
 

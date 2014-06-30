@@ -42,6 +42,8 @@ import com.jme3.scene.Spatial.CullHint;
 import com.jme3.util.SafeArrayList;
 import com.simsilica.builder.Builder;
 import com.simsilica.builder.BuilderReference;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,6 +78,9 @@ public class PagedGrid {
 
     private PagedGrid parent;
     private SafeArrayList<PagedGrid> children;
+    
+    // For double checking that we aren't leaking releases.
+    private ConcurrentHashMap<Zone, Zone> releaseWatchDog = new ConcurrentHashMap<Zone, Zone>(); 
  
     /**
      *  Creates a root level paging system that will use the specified
@@ -115,6 +120,57 @@ public class PagedGrid {
         if( this.parent != null ) {
             parent.addChild(this);
         }
+    }
+ 
+    public void release() {
+        // Force release all child paged grids...
+        if( children != null ) {
+            for( PagedGrid child : children ) {
+                child.release();
+            }
+        }
+ 
+        for( int i = 0; i < size; i++ ) {
+            for( int j = 0; j < layers; j++ ) {
+                for( int k = 0; k < size; k++ ) {
+                    if( cells[i][j][k] != null ) {
+                        // Force a release as we've already forced the
+                        // children to release
+                        if( log.isTraceEnabled() ) {
+                            log.trace("release() release:" + cells[i][j][k] );
+                        }                         
+                        builder.release(cells[i][j][k]);
+                        cells[i][j][k] = null;
+                    }
+                }
+            }
+        }            
+ 
+        // Set it to build after everything else... but note that
+        // a shutdown is probably coming soon so if there are still
+        // a lot of pending processes then this won't run.  It's a 
+        // useful bit of double checking if everything is idle at
+        // shutdown, though.       
+        builder.build(new BuilderReference() {
+
+                @Override
+                public int getPriority() {
+                    return Integer.MAX_VALUE;
+                }
+    
+                @Override
+                public void build() {
+                }
+    
+                @Override
+                public void apply( Builder builder ) {
+                    log.debug(PagedGrid.this + " unreleased zones:" + releaseWatchDog.keySet());
+                }
+
+                @Override
+                public void release( Builder builder ) {
+                }
+            });
     }
  
     public Grid getGrid() {
@@ -300,6 +356,10 @@ public class PagedGrid {
         private SafeArrayList<ZoneProxy> children; // dependents
         private boolean applied = false;
         private boolean releasing = false;
+        private boolean released = false;
+
+        // Set to true if the zone has been built at least once.
+        private AtomicBoolean builtOnce = new AtomicBoolean(false);
         
         public ZoneProxy( Zone zone ) {
             this.zone = zone;
@@ -320,13 +380,18 @@ public class PagedGrid {
 
         @Override
         public final void build() {
+            builtOnce.set(true);
+            releaseWatchDog.put(zone, zone);
+            if( log.isTraceEnabled() ) {
+                log.trace("Calling build() on:" + zone);
+            }
             zone.build();
         }
 
         @Override
-        public final void apply() {
+        public final void apply( Builder builder ) {
             applied = true;
-            zone.apply();
+            zone.apply(builder);
             
             // Since we only attach on apply() we can get away
             // with detaching on release().  release() is only
@@ -343,16 +408,33 @@ public class PagedGrid {
         }
 
         @Override
-        public final void release() {
-            if( !applied ) {
+        public final void release( Builder builder ) {
+            if( released ) {
+                throw new RuntimeException("Zone already released:" + zone);
+            }
+            released = true;
+            if( releaseWatchDog.remove(zone) == null ) {
+                throw new RuntimeException("Watchdog missed a build()");
+            }
+            
+            if( !builtOnce.get() ) {
+                if( log.isTraceEnabled() ) {
+                    log.trace("releasing unbuilt zone:" + zone );
+                }            
                 // In the case of children, they don't get passed to the builder
                 // until the parents are built.  It is then possible that we might
                 // pass this reference on to the builder for release without ever
-                // having applied it.  Normally the builder keeps track for us but
-                // in this case we are bypassing that check by delaying build().
+                // having requested that it get built.  Normally the builder keeps 
+                // track for us but in this case we are bypassing that check by 
+                // delaying build().
+                // But we only care if it's been built at least one time... then
+                // we always need to release.
                 return;
             }
-            zone.release();
+            if( log.isTraceEnabled() ) {
+                log.trace("Calling release() on:" + zone);
+            }
+            zone.release(builder);
             detach();
             
             // Now we can let the parents know we are done
@@ -374,10 +456,23 @@ public class PagedGrid {
          *  check anyway.
          */
         public final void markForRelease() {
+            if( log.isTraceEnabled() ) {
+                log.trace("markForRelease():" + zone);
+            }
+            if( releasing ) {
+                if( log.isTraceEnabled() ) {
+                    log.trace("markForRelease() already released:" + zone);
+                }            
+                // We are already marked for release.  This can happen
+                // when the parent has gone out of scope at the same time
+                // this zone does.  The grid will mark this zone for release
+                // and so will the parent.  But we should only release once.
+                return;
+            }
             releasing = true;
-            
+                        
             // Regardless of what we do, make the node invisible
-            zone.getZoneRoot().setCullHint(CullHint.Always);
+            zone.getZoneRoot().setCullHint(CullHint.Always);             
             
             if( children != null ) {
                 // We can't release yet... but we'll let the children know
@@ -385,7 +480,10 @@ public class PagedGrid {
                     child.markForRelease();
                 }
             } else {
-                builder.release(this);
+                // It's possible that we have not been submitted yet
+                if( builder.isManaged(this) ) {
+                    builder.release(this);
+                }
             }
         }
  
@@ -411,6 +509,10 @@ public class PagedGrid {
         }
         
         protected void rebuild() {
+            if( log.isTraceEnabled() ) {
+                log.trace("rebuild():" + zone);
+            }
+            
             // We could keep track of additional state here
             // because "applied" is not the whole story in the
             // case of a rebuild.  
@@ -461,6 +563,11 @@ public class PagedGrid {
                     builder.release(this);
                 }
             }
+        }
+ 
+        @Override       
+        public String toString() {
+            return super.toString() + "[" + zone + "]";
         }
     }
 }

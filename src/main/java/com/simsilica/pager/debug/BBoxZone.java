@@ -37,13 +37,13 @@
 package com.simsilica.pager.debug;
 
 import com.jme3.material.Material;
-import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.VertexBuffer;
 import com.jme3.scene.debug.WireBox;
 import com.jme3.util.BufferUtils;
+import com.simsilica.builder.Builder;
 import com.simsilica.pager.AbstractZone;
 import com.simsilica.pager.Grid;
 import com.simsilica.pager.PagedGrid;
@@ -85,12 +85,12 @@ public class BBoxZone extends AbstractZone {
     }
 
     @Override
-    public void apply() {
+    public void apply( Builder builder ) {
         getZoneRoot().attachChild(boxGeom);
     }
 
     @Override
-    public void release() {
+    public void release( Builder builder ) {
         Mesh mesh = boxGeom.getMesh();
         for( VertexBuffer vb : mesh.getBufferList() ) {
             if( log.isTraceEnabled() ) {
