@@ -135,6 +135,14 @@ public abstract class AbstractZone implements Zone {
     public boolean setRelativeGridLocation( int x, int y, int z ) {
         return false;
     }
+ 
+    /**
+     *  Default implementation always returns false.
+     */
+    @Override
+    public boolean setViewLocation( float x, float z ) {
+        return false;
+    }
     
     @Override
     public String toString() {

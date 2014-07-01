@@ -71,6 +71,14 @@ public interface Zone extends BuilderReference {
      */
     public boolean setRelativeGridLocation( int x, int y, int z );
 
+    /**
+     *  Called by the pager to set the current view location on the
+     *  center cells.  This allows the zone to recalculate it's geometry
+     *  based on camera movement and is generally only necessary for
+     *  the center cell and the cells immediately surrounding them.
+     */
+    public boolean setViewLocation( float x, float z );
+
     public int getXCell();
     public int getYCell();
     public int getZCell();

@@ -72,6 +72,8 @@ public class PagedGrid {
     private int radius;
     private int priorityBias = 1;
  
+    private boolean trackViewLocation;
+ 
     private ZoneProxy[][][] cells;
     private int size;
     private int layers;
@@ -188,6 +190,14 @@ public class PagedGrid {
     public int getPriorityBias() {
         return priorityBias;
     }
+    
+    public void setTrackViewLocation( boolean b ) {
+        this.trackViewLocation = b;
+    }
+    
+    public boolean getTrackViewLocation() {
+        return trackViewLocation;
+    }
  
     protected void addChild( PagedGrid child ) {
         if( children == null ) {
@@ -196,12 +206,26 @@ public class PagedGrid {
         children.add(child);
     }
     
-    public void setCenterWorldLocation( float x, float z ) {
+    public void setCenterWorldLocation( float x, float z ) {        
         if( setCenterCell(grid.toCellX(x), grid.toCellZ(z)) ) {
             recalculateCorner();            
         }        
  
         gridRoot.setLocalTranslation(-(x - xCornerWorld), 0, -(z - zCornerWorld));
+ 
+        // Let the center cells know that the position has moved
+        if( trackViewLocation ) {
+            //long start = System.nanoTime();
+            for( int i = radius - 1; i <= radius + 1; i++ ) {
+                for( int j = radius - 1; j <= radius + 1; j++ ) {                    
+                    for( int layer = 0; layer < layers; layer++ ) {
+                        cells[i][layer][j].zone.setViewLocation(x, z);
+                    }
+                }
+            }
+            //long end = System.nanoTime();
+            //System.out.println( "Updated view location in:" + ((end - start)/1000000.0) + " ms" );
+        }            
                         
         if( children != null ) {
             for( PagedGrid child : children ) {
@@ -263,6 +287,10 @@ public class PagedGrid {
                     if( ref == null ) {
                         // Need to create one
                         ref = new ZoneProxy(zoneFactory.createZone(this, xNew + x, y, zNew + z));
+                        
+                        // Tell the zone its relative location before we build it
+                        ref.zone.setRelativeGridLocation(x, y, z);
+                        
                         if( parent == null ) {
                             builder.build(ref);
                         } else {
