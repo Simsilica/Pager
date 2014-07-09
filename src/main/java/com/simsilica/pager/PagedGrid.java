@@ -141,7 +141,9 @@ public class PagedGrid {
                         if( log.isTraceEnabled() ) {
                             log.trace("release() release:" + cells[i][j][k] );
                         }                         
-                        builder.release(cells[i][j][k]);
+                        if( cells[i][j][k].isBuiltOnce()) {
+                            builder.release(cells[i][j][k]);
+                        }
                         cells[i][j][k] = null;
                     }
                 }
@@ -391,6 +393,10 @@ public class PagedGrid {
         
         public ZoneProxy( Zone zone ) {
             this.zone = zone;
+        }
+        
+        public boolean isBuiltOnce() {
+            return builtOnce.get();
         }
 
         public final void attach() {
