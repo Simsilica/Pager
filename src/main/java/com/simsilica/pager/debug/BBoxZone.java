@@ -74,7 +74,7 @@ public class BBoxZone extends AbstractZone {
 
         float scale = 1;
         if( getParentZone() != null ) {        
-            log.info( "Building child... Parent mesh source:" + getParentZone() );
+            log.debug( "Building child... Parent mesh source:" + getParentZone() );
             scale = 0.99f;
         }    
         Vector3f size = getGrid().getCellSize();
@@ -93,8 +93,8 @@ public class BBoxZone extends AbstractZone {
     public void release( Builder builder ) {
         Mesh mesh = boxGeom.getMesh();
         for( VertexBuffer vb : mesh.getBufferList() ) {
-            if( log.isTraceEnabled() ) {
-                log.trace("--destroying buffer:" + vb);
+            if( log.isDebugEnabled() ) {
+                log.debug("--destroying buffer:" + vb);
             }
             BufferUtils.destroyDirectBuffer( vb.getData() );
         }        
