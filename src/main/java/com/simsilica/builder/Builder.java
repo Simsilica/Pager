@@ -364,14 +364,14 @@ public class Builder {
                 // that means it's doing what we were already going to ask it
                 // to do.
                 if( log.isTraceEnabled() ) {
-                    log.trace("markForBuild() state already set for building:" + state + "  ref:" + ref );
+                    log.trace("markForBuild() state already set for building:" + state + "  ref:" + ref);
                 }                 
                 return;
             }
             stateLock.lock();
             try {
                 if( log.isTraceEnabled() ) {
-                    log.trace("markForBuild() from:" + state.get() + "  ref:" + ref );
+                    log.trace("markForBuild() from:" + state.get() + "  ref:" + ref);
                 }            
                 // At this point we are either done, processing,
                 // or already marked for reprocessing.  We are the 
@@ -403,7 +403,7 @@ public class Builder {
                         throw new IllegalStateException("Unexpected state in markForBuild():" + state);
                 }
                 if( log.isTraceEnabled() ) {
-                    log.trace("to state:" + state.get() + "  ref:" + ref );
+                    log.trace("to state:" + state.get() + "  ref:" + ref);
                 }
             } finally {
                 stateLock.unlock();
@@ -418,7 +418,7 @@ public class Builder {
             stateLock.lock();
             try {
                 if( log.isTraceEnabled() ) {
-                    log.trace("markForRelease() from:" + state.get() + "  ref:" + ref );
+                    log.trace("markForRelease() from:" + state.get() + "  ref:" + ref);
                 }            
                 switch( state.get() ) {
                     case Pending:
@@ -455,7 +455,7 @@ public class Builder {
                         throw new IllegalStateException("Unexpected state in markForRelease():" + state);
                 }
                 if( log.isTraceEnabled() ) {
-                    log.trace("to state:" + state.get() + "  ref:" + ref );
+                    log.trace("to state:" + state.get() + "  ref:" + ref);
                 }                
             } finally {
                 stateLock.unlock();
@@ -472,7 +472,7 @@ public class Builder {
             stateLock.lock();
             try {
                 if( log.isTraceEnabled() ) {
-                    log.trace("apply() from:" + state.get() + "  ref:" + ref );
+                    log.trace("apply() from:" + state.get() + "  ref:" + ref);
                 }            
                 switch( state.get() ) {
                     case Done:
@@ -488,6 +488,10 @@ public class Builder {
                         if( built.get() ) {
                             // Only release if it has been built at least once
                             ref.release(Builder.this);
+                        } else {
+                            if( log.isTraceEnabled() ) {
+                                log.trace("Released object was never built:" + ref);
+                            }
                         }
                         break;
                     case Reprocess:
@@ -503,7 +507,7 @@ public class Builder {
                         throw new IllegalStateException("Unexpected state in apply():" + state + ", ref:" + ref);
                 }
                 if( log.isTraceEnabled() ) {
-                    log.trace("to state:" + state.get() + "  ref:" + ref );
+                    log.trace("to state:" + state.get() + "  ref:" + ref);
                 }                
             } finally {
                 stateLock.unlock();
@@ -520,7 +524,7 @@ public class Builder {
             stateLock.lock();
             try {
                 if( log.isTraceEnabled() ) {
-                    log.trace("markProcessing() from:" + state.get() + "  ref:" + ref );
+                    log.trace("markProcessing() from:" + state.get() + "  ref:" + ref);
                 }            
                 switch( state.get() ) {
                     case Pending:
@@ -552,7 +556,7 @@ public class Builder {
                 // Track that has been built at least once
                 built.set(true);
                 if( log.isTraceEnabled() ) {
-                    log.trace("to state:" + state.get() + "  ref:" + ref );
+                    log.trace("to state:" + state.get() + "  ref:" + ref);
                 }                
             } finally {
                 stateLock.unlock();
@@ -568,7 +572,7 @@ public class Builder {
             stateLock.lock();
             try {
                 if( log.isTraceEnabled() ) {
-                    log.trace("markDone() from:" + state.get() + "  ref:" + ref );
+                    log.trace("markDone() from:" + state.get() + "  ref:" + ref);
                 }            
                 switch( state.get() ) {
                     case Pending:
@@ -607,7 +611,7 @@ public class Builder {
                         throw new IllegalStateException("Unexpected state in apply():" + state + ", ref:" + ref);
                 }
                 if( log.isTraceEnabled() ) {
-                    log.trace("to state:" + state.get() + "  ref:" + ref );
+                    log.trace("to state:" + state.get() + "  ref:" + ref);
                 }                
             } finally {
                 stateLock.unlock();
