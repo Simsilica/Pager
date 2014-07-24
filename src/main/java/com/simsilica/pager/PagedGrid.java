@@ -82,7 +82,7 @@ public class PagedGrid {
     private SafeArrayList<PagedGrid> children;
     
     // For double checking that we aren't leaking releases.
-    private ConcurrentHashMap<Zone, Zone> releaseWatchDog = new ConcurrentHashMap<Zone, Zone>(); 
+    private ConcurrentHashMap<Zone, ZoneProxy> releaseWatchDog = new ConcurrentHashMap<Zone, ZoneProxy>(); 
  
     /**
      *  Creates a root level paging system that will use the specified
@@ -168,7 +168,13 @@ public class PagedGrid {
     
                 @Override
                 public void apply( Builder builder ) {
+                    if( !log.isDebugEnabled() ) {
+                        return;
+                    }
                     log.debug(PagedGrid.this + " unreleased zones:" + releaseWatchDog.keySet());
+                    for( ZoneProxy proxy : releaseWatchDog.values() ) {
+                        log.debug( proxy + "  unreleased children:" + proxy.children ); 
+                    } 
                 }
 
                 @Override
@@ -415,7 +421,7 @@ public class PagedGrid {
         @Override
         public final void build() {
             builtOnce.set(true);
-            releaseWatchDog.put(zone, zone);
+            releaseWatchDog.put(zone, this);
             if( log.isTraceEnabled() ) {
                 log.trace("Calling build() on:" + zone);
             }
@@ -453,7 +459,7 @@ public class PagedGrid {
             
             if( !builtOnce.get() ) {
                 if( log.isTraceEnabled() ) {
-                    log.trace("releasing unbuilt zone:" + zone );
+                    log.trace("releasing unbuilt zone:" + zone + "  parents:" + parents );
                 }            
                 // In the case of children, they don't get passed to the builder
                 // until the parents are built.  It is then possible that we might
@@ -463,16 +469,44 @@ public class PagedGrid {
                 // delaying build().
                 // But we only care if it's been built at least one time... then
                 // we always need to release.
-                return;
+            } else {
+                if( log.isTraceEnabled() ) {
+                    log.trace("Calling release() on:" + zone);
+                }
+                zone.release(builder);
+                detach();
             }
-            if( log.isTraceEnabled() ) {
-                log.trace("Calling release() on:" + zone);
-            }
-            zone.release(builder);
-            detach();
+            
+            // Even if we didn't actually release the zone, we still need to let the
+            // parents know that this zone is clear... or they will never release.
             
             // Now we can let the parents know we are done
+            dispose();
+        }
+ 
+        /**
+         *  Removes this from any parent zones, etc. regardless of build
+         *  or release state.  This is called as the last thing whenever a 
+         *  zone is completely finished... even if it was never built.
+         */ 
+        protected void dispose() {
+        
+            if( log.isTraceEnabled() ) {
+                log.trace("dispose():" + zone);
+            }
+                        
+            // The need to do this so finally is partially due to how
+            // parents keep track of children.  If they tracked built children
+            // in addition to just "children" then the parent could be smart
+            // enough to release itself without the children explicitly removing
+            // themselves.
+            // At any rate, having to call dispose from more than one place is a
+            // sign that our state management could be simplified somewhere.
+        
             if( parents != null ) {
+                if( log.isTraceEnabled() ) {
+                    log.trace("Removing from parents:" + parents + ", child:" + zone);
+                }
                 for( ZoneProxy parent : parents.getArray() ) {
                     parent.removeChild(this);   
                 }
@@ -491,11 +525,11 @@ public class PagedGrid {
          */
         public final void markForRelease() {
             if( log.isTraceEnabled() ) {
-                log.trace("markForRelease():" + zone);
+                log.trace("markForRelease():" + zone + "  parents:" + parents);
             }
             if( releasing ) {
                 if( log.isTraceEnabled() ) {
-                    log.trace("markForRelease() already released:" + zone);
+                    log.trace("markForRelease() already releasing:" + zone);
                 }            
                 // We are already marked for release.  This can happen
                 // when the parent has gone out of scope at the same time
@@ -516,7 +550,26 @@ public class PagedGrid {
             } else {
                 // It's possible that we have not been submitted yet
                 if( builder.isManaged(this) ) {
+                    if( log.isTraceEnabled() ) {
+                        log.trace("releasing:" + zone);
+                    }
+                    // If we are managed, then we _always_ need to release
+                    // or the reference will be 'leaked'.            
                     builder.release(this);
+                    
+                    // But if we've never been built then we will not
+                    // be called back... so we must dispose manually
+                    if( !builtOnce.get() ) {
+                        if( log.isTraceEnabled() ) {
+                            log.trace("disposing because never built:" + zone);
+                        }
+                        dispose();            
+                    }
+                    
+                } else {
+                    // Need to let our parents know to forget us because we 
+                    // will never be released
+                    dispose();                    
                 }
             }
         }
@@ -593,8 +646,12 @@ public class PagedGrid {
                 children = null;
                 
                 if( releasing ) {
-                    // Now we can really release
-                    builder.release(this);
+                    if( builder.isManaged(this) ) {
+                        // Now we can really release
+                        builder.release(this);
+                    } else {
+                        dispose();
+                    }
                 }
             }
         }
