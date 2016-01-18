@@ -37,10 +37,7 @@
 package com.simsilica.builder;
 
 import com.jme3.app.Application;
-
-// Just until JME has this class, we will have a Lemur dependency
-// but just for this.
-import com.simsilica.lemur.event.BaseAppState;
+import com.jme3.app.state.BaseAppState;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,7 +114,7 @@ public class BuilderState extends BaseAppState {
     }
 
     @Override
-    protected void enable() {
+    protected void onEnable() {
         // We have to check because the first time through
         // it won't be paused.
         if( builder.isPaused() ) {
@@ -131,7 +128,7 @@ public class BuilderState extends BaseAppState {
     }
 
     @Override
-    protected void disable() {
+    protected void onDisable() {
         builder.pause();
     }
 }

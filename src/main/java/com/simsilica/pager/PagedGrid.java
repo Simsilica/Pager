@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * $Id: PagedGrid.java 191 2014-07-24 08:48:22Z pspeed42 $
  * 
  * Copyright (c) 2014, Simsilica, LLC
  * All rights reserved.
@@ -36,6 +36,7 @@
 
 package com.simsilica.pager;
 
+import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial.CullHint;
@@ -68,6 +69,8 @@ public class PagedGrid {
     private float zCornerWorld;
     private int xCenterCell = Integer.MIN_VALUE;
     private int zCenterCell = Integer.MIN_VALUE;
+    private float xWorld;
+    private float zWorld;
     private Grid grid;
     private int radius;
     private int priorityBias = 1;
@@ -83,6 +86,8 @@ public class PagedGrid {
     
     // For double checking that we aren't leaking releases.
     private ConcurrentHashMap<Zone, ZoneProxy> releaseWatchDog = new ConcurrentHashMap<Zone, ZoneProxy>(); 
+
+    private int appliedZoneCount = 0;
  
     /**
      *  Creates a root level paging system that will use the specified
@@ -122,6 +127,22 @@ public class PagedGrid {
         if( this.parent != null ) {
             parent.addChild(this);
         }
+    }
+    
+    public int getLayerCount() {
+        return layers;
+    }
+    
+    public int getRadius() {
+        return radius;
+    }
+    
+    public int getAppliedZoneCount() {
+        return appliedZoneCount;
+    }
+    
+    public int getMaxZoneCount() {
+        return size * size * layers;
     }
  
     public void release() {
@@ -212,6 +233,16 @@ public class PagedGrid {
             children = new SafeArrayList<PagedGrid>(PagedGrid.class);
         }
         children.add(child);
+        
+        if( xCenterCell != Integer.MIN_VALUE && zCenterCell != Integer.MIN_VALUE ) {
+            // Then this grid has had its position set before and so we
+            // should update the child
+            child.setCenterWorldLocation(xWorld, zWorld);
+        }
+    }
+ 
+    public Vector2f getCenterWorldLocation() {
+        return new Vector2f(xWorld, zWorld);
     }
     
     public void setCenterWorldLocation( float x, float z ) {        
@@ -219,6 +250,9 @@ public class PagedGrid {
             recalculateCorner();            
         }        
  
+        this.xWorld = x;
+        this.zWorld = z;
+        
         gridRoot.setLocalTranslation(-(x - xCornerWorld), 0, -(z - zCornerWorld));
  
         // Let the center cells know that the position has moved
@@ -431,6 +465,7 @@ public class PagedGrid {
         @Override
         public final void apply( Builder builder ) {
             applied = true;
+            appliedZoneCount++;
             zone.apply(builder);
             
             // Since we only attach on apply() we can get away
@@ -453,6 +488,7 @@ public class PagedGrid {
                 throw new RuntimeException("Zone already released:" + zone);
             }
             released = true;
+            appliedZoneCount--;
             if( releaseWatchDog.remove(zone) == null ) {
                 throw new RuntimeException("Watchdog missed a build()");
             }
@@ -604,6 +640,7 @@ public class PagedGrid {
             // because "applied" is not the whole story in the
             // case of a rebuild.  
             applied = false;
+            appliedZoneCount--;
             builder.build(this);
         }
  

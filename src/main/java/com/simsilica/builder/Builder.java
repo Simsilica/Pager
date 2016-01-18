@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * $Id: Builder.java 190 2014-07-24 08:45:25Z pspeed42 $
  * 
  * Copyright (c) 2014, Simsilica, LLC
  * All rights reserved.
@@ -90,7 +90,11 @@ public class Builder {
                                                 new BuilderThreadFactory() );
     }
  
-    public int getPending() {
+    public int getPendingCount() {
+        return queue.size();
+    }
+    
+    public int getManagedCount() {
         return refMap.size();
     }
  
