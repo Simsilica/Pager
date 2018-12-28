@@ -280,6 +280,18 @@ public class PagedGrid {
         xCornerWorld = grid.toWorldX(xCenterCell - radius);
         zCornerWorld = grid.toWorldZ(zCenterCell - radius);        
     }
+    
+    public void rebuildCell( int xWorld, int yWorld, int zWorld ) {
+        int xCell = grid.toCellX(xWorld);
+        int yCell = grid.toCellY(yWorld);
+        int zCell = grid.toCellZ(zWorld);
+    
+        ZoneProxy zone = getWorldCell(xCell, yCell, zCell);
+        if( zone == null ) {
+            return;
+        }
+        zone.rebuild();    
+    } 
  
     protected ZoneProxy getWorldCell( int xCellWorld, int yCellWorld, int zCellWorld ) { 
         int x = xCellWorld - (xCenterCell - radius);
