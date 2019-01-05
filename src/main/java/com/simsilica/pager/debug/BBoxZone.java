@@ -36,21 +36,25 @@
 
 package com.simsilica.pager.debug;
 
+import org.slf4j.*;
+
 import com.jme3.material.Material;
+import com.jme3.material.RenderState.BlendMode;
 import com.jme3.math.Vector3f;
+import com.jme3.renderer.queue.RenderQueue.Bucket;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.VertexBuffer;
 import com.jme3.scene.debug.WireBox;
 import com.jme3.util.BufferUtils;
+
 import com.simsilica.builder.Builder;
 import com.simsilica.pager.AbstractZone;
 import com.simsilica.pager.Grid;
 import com.simsilica.pager.PagedGrid;
 import com.simsilica.pager.Zone;
 import com.simsilica.pager.ZoneFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 
 
 /**
@@ -82,6 +86,10 @@ public class BBoxZone extends AbstractZone {
         boxGeom = new Geometry("box", box);
         boxGeom.setLocalTranslation(size.x * 0.5f, size.y * 0.5f, size.z * 0.5f);
         boxGeom.setMaterial(material);
+        
+        if( material.getAdditionalRenderState().getBlendMode() == BlendMode.Alpha ) {
+            boxGeom.setQueueBucket(Bucket.Transparent);
+        }
     }
 
     @Override
